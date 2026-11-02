@@ -1,3 +1,4 @@
+
 const dns = require("node:dns");
 require("dotenv").config();
 
@@ -6,8 +7,9 @@ if (process.env.DNS_SERVERS) {
 }
 
 const express = require("express");
-const mongoose = require("mongoose");
 const cors = require("cors");
+
+const connectDB = require("./config/db");
 
 const app = express();
 
@@ -19,20 +21,19 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
     res.json({
-        message: "CareerCast API is running successfully!"
+        message: "CareerCast API is running!"
     });
 });
 
-// MongoDB connection
-mongoose.connect(process.env.MONGO_URI)
-    .then(() => {
-        console.log("MongoDB Connected Successfully");
+// API routes
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/profile", require("./routes/profileRoutes"));
+app.use("/api/resume", require("./routes/resumeRoutes"));
 
-        app.listen(process.env.PORT || 5000, () => {
-            console.log("Server running on port 5000");
-        });
-    })
-    .catch((error) => {
-        console.error("MongoDB Connection Error:", error.message);
-        process.exit(1);
+const PORT = process.env.PORT || 5000;
+
+connectDB().then(() => {
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
     });
+});

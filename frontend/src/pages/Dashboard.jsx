@@ -35,6 +35,7 @@ function Dashboard() {
 
     const [user, setUser] = useState(null);
     const [profile, setProfile] = useState(null);
+    const [latestResume, setLatestResume] = useState(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -48,9 +49,10 @@ useEffect(() => {
         setError("");
 
         try {
-            const [userResult, profileResult] = await Promise.allSettled([
+            const [userResult, profileResult, resumeResult] = await Promise.allSettled([
                 API.get("/auth/me"),
-                API.get("/profile")
+                API.get("/profile"),
+                API.get("/resume")
             ]);
 
             if (!isMounted) return;
@@ -71,6 +73,26 @@ useEffect(() => {
 
             // User information
             setUser(userResult.value.data.user);
+
+            // Latest completed resume analysis for the logged-in user
+            if (resumeResult.status === "fulfilled") {
+                const resumes = resumeResult.value.data.resumes || [];
+                const completedResumes = resumes.filter(
+                    (resume) => resume.analysisStatus === "completed"
+                );
+
+                // Backend returns resumes newest first.
+                setLatestResume(completedResumes[0] || null);
+            } else if (resumeResult.reason.response?.status === 401) {
+                localStorage.removeItem("token");
+                localStorage.removeItem("user");
+                navigate("/login", { replace: true });
+                return;
+            } else {
+                // Resume analysis is optional; do not block the dashboard if it fails.
+                console.error("Unable to load resume analysis:", resumeResult.reason);
+                setLatestResume(null);
+            }
 
             // Profile information
             if (profileResult.status === "fulfilled") {
@@ -142,6 +164,7 @@ useEffect(() => {
     const education = profile?.education || [];
     const interests = profile?.interests || [];
     const preferredCareers = profile?.preferredCareer || [];
+    const resumeScore = latestResume?.parsedData?.insights?.resumeScore;
 
     const completedSections = [
         education.length > 0,
@@ -419,23 +442,35 @@ useEffect(() => {
 
                         <div className="stat-card">
                             <div className="stat-icon cyan">
-                                <Code2 size={25} />
+                                <FileText size={25} />
                             </div>
                             <div className="stat-info">
-                                <p>Skills Identified</p>
-                                <h3>{skills.length}</h3>
-                                <span className="stat-caption">Added to your profile</span>
+                                <p>Resume Analysis</p>
+                                <h3>{latestResume ? "Completed" : "Not Analyzed"}</h3>
+                                <span className="stat-caption">
+                                    {latestResume
+                                        ? latestResume.fileName
+                                        : "Upload your resume to get started"}
+                                </span>
                             </div>
                         </div>
 
                         <div className="stat-card">
                             <div className="stat-icon pink">
-                                <GraduationCap size={25} />
+                                <Target size={25} />
                             </div>
                             <div className="stat-info">
-                                <p>Education Records</p>
-                                <h3>{education.length}</h3>
-                                <span className="stat-caption">Your qualifications</span>
+                                <p>Resume Score</p>
+                                <h3>
+                                    {resumeScore !== undefined && resumeScore !== null
+                                        ? `${resumeScore}/100`
+                                        : "--"}
+                                </h3>
+                                <span className="stat-caption">
+                                    {latestResume
+                                        ? "Based on your resume analysis"
+                                        : "Analyze your resume to view score"}
+                                </span>
                             </div>
                         </div>
 

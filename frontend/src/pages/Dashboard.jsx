@@ -463,7 +463,7 @@ useEffect(() => {
                                 <p>Resume Score</p>
                                 <h3>
                                     {resumeScore !== undefined && resumeScore !== null
-                                        ? `${resumeScore}/100`
+                                        ? `${resumeScore}%`
                                         : "--"}
                                 </h3>
                                 <span className="stat-caption">
